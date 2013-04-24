@@ -1,17 +1,20 @@
 (function(Backbone, _) {
 var assert = chai.assert;
 
-var db = openDatabase('bb-websql-tests', '', 'Backbone Websql Tests', 1024*1024);
-
 var ThingModel = Backbone.Model.extend({
-  'store': new WebSQLStore(db, 'things')
+  'urlRoot': '/things'
 });
 var ThingCollection = Backbone.Collection.extend({
-  'model': ThingModel,
-  'store': ThingModel.prototype.store
+  'url': '/things',
+  'model': ThingModel
 });
 
 describe('Backbone.WebSQL', function() {
+
+  before(function(done) {
+    var db = openDatabase('bb-websql-tests', '', 'Backbone Websql Tests', 1024*1024)
+    Backbone.WebSQL(db, {'/things': 'things'}, done);
+  });
 
   afterEach(teardown);
 
