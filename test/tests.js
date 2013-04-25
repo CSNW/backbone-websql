@@ -141,13 +141,19 @@ describe('Backbone.WebSQL', function() {
 });
 
 function teardown(done) {
-  var coll = new ThingCollection();
+  teardownColl(new ThingCollection(), function(err) {
+    if (err) return done(err);
+    teardownColl(new UserCollection(), done);
+  });
+}
+
+function teardownColl(coll, callback) {
   coll.fetch(cb(function(err) {
-    if (err) return done('teardown fetch failed');
+    if (err) return callback('teardown fetch failed');
     var models = _.clone(coll.models);
     async.forEach(models, destroy, function(err) {
-      if (err) return done('model.destroy() failed');
-      done();
+      if (err) return callback('model.destroy() failed');
+      callback();
     });
 
     function destroy(model, callback) {
