@@ -5,27 +5,24 @@ var route_table_map = {};
 function WebSQL(db, route_map, callback) {
 	var num_routes = Object.keys(route_map).length;
 	var success = _.after(num_routes, function (tx,res) { if (callback) callback(); });
-	var error = function (tx,error) { if (callback) callback(error); };
+	var error = function (tx,error) { if (callback) callback(new Error(error.message)); };
 
 	for (var route in route_map) {
-		route_table_map[route] = {'db': db, 'table': route_map[route]};
+		var store = route_map[route];
+		if (typeof store == 'string')
+			store = {'table': store};
+		store.db = db;
+		store.cols = store.cols || [];
+
+		route_table_map[route] = store;
 		var colDefns = ["`id` unique", "`value`"];
-		//colDefns = colDefns.concat(this.columns.map(createColDefn));
+		colDefns = colDefns.concat(store.cols.map(createColDefn));
 		
-		var sql = 'CREATE TABLE IF NOT EXISTS `' + route_map[route] + '` ' +
+		var sql = 'CREATE TABLE IF NOT EXISTS `' + store.table + '` ' +
 		  '(' + colDefns.join(', ') + ');';
+		 console.log(sql);
 		_executeSql(db, sql, null, success, error, {});
 	}
-
-	// if (typeof columns == 'function') {
-	// 	initErrorCallback = initSuccessCallback;
-	// 	initSuccessCallback = columns;
-	// 	columns = null;
-	// }
-
-	//this.tableName = tableName;
-	//this.db = db;
-	//this.columns = columns || [];
 };
 
 WebSQL.debug = false;
@@ -107,11 +104,11 @@ function create(store, model,success,error,options) {
 	var colNames = ["`id`", "`value`"];
 	var placeholders = ['?', '?'];
 	var params = [model.attributes[model.idAttribute], JSON.stringify(model.toJSON())];
-	// this.columns.forEach(function(col) {
-	// 	colNames.push("`" + col.name + "`");
-	// 	placeholders.push(['?']);
-	// 	params.push(model.attributes[col.name]);
-	// });
+	store.cols.forEach(function(col) {
+		colNames.push("`" + col + "`");
+		placeholders.push(['?']);
+		params.push(model.attributes[col]);
+	});
 	var orReplace = WebSQL.insertOrReplace ? ' OR REPLACE' : '';
 	_executeSql(store.db, "INSERT" + orReplace + " INTO `" + store.table + "` (" + colNames.join(",") + ") VALUES(" + placeholders.join(",") + ");", params, success, error, options);
 }
@@ -158,10 +155,10 @@ function update(store, model, success, error, options) {
 
 	var setStmts = ["`value`=?"];
 	var params = [JSON.stringify(model.toJSON())];
-	// this.columns.forEach(function(col) {
-	// 	setStmts.push("`" + col.name + "`=?");
-	// 	params.push(model.attributes[col.name]);
-	// });
+	store.columns.forEach(function(col) {
+		setStmts.push("`" + col + "`=?");
+		params.push(model.attributes[col]);
+	});
 	params.push(model.attributes[model.idAttribute]);
 	_executeSql(store.db, "UPDATE `" + store.table + "` SET " + setStmts.join(" AND ") + " WHERE(`id`=?);", params, function(tx, result) {
 		if (result.rowsAffected == 1)
@@ -201,17 +198,18 @@ var typeMap = {
   "object": "TEXT"
 };
 function createColDefn(col) {
-	if (col.type && !(col.type in typeMap))
-		throw new Error("Unsupported type: " + col.type);
+	// var name = typeof col == 'string' ? col : col.name;
+	// if (col.type && !(col.type in typeMap))
+	// 	throw new Error("Unsupported type: " + col.type);
 
-	var defn = "`" + col.name + "`";
-	if (col.type) {
-		if (col.scale)
-			defn += " REAL";
-		else
-			defn += " " + typeMap[col.type];
-	}
-	return defn;
+	return "`" + col + "`";
+	// if (col.type) {
+	// 	if (col.scale)
+	// 		defn += " REAL";
+	// 	else
+	// 		defn += " " + typeMap[col.type];
+	// }
+	// return defn;
 }
 
 Backbone.WebSQL = WebSQL;

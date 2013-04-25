@@ -9,11 +9,21 @@ var ThingCollection = Backbone.Collection.extend({
   'model': ThingModel
 });
 
+var User = Backbone.Model.extend({'urlRoot': '/users'});
+var UserCollection = Backbone.Collection.extend({
+  'url': '/users',
+  'model': User
+});
+
 describe('Backbone.WebSQL', function() {
 
   before(function(done) {
-    var db = openDatabase('bb-websql-tests', '', 'Backbone Websql Tests', 1024*1024)
-    Backbone.WebSQL(db, {'/things': 'things'}, done);
+    var db = openDatabase('bb-websql-tests', '', 'Backbone Websql Tests', 1024*1024);
+    var routes = {
+      '/things': 'things',
+      '/users': {'table': 'users', 'cols': ['fname', 'lname']}
+    };
+    Backbone.WebSQL(db, routes, done);
   });
 
   afterEach(teardown);
@@ -87,6 +97,27 @@ describe('Backbone.WebSQL', function() {
           assert.equal(model2.get('name'), 'some thing');
           done();
         });
+      }));
+    });
+
+    it('should filter by a custom column', function(done) {
+      var model = new User({'fname': 'Fred', 'lname': 'Flintstone'});
+      model.save(null, cb(function(err) {
+        if (err) return done('User.save() failed: ' + err);
+        var opts = {'filters': {'fname': 'Fred'}};
+        var coll1 = new UserCollection();
+        coll1.fetch(cb(opts, function(err) {
+          if (err) return done(err);
+          assert.equal(coll1.length, 1);
+          
+          opts.filters.fname = 'Wilma';
+          var coll2 = new UserCollection();
+          coll2.fetch(cb(opts, function(err) {
+            if (err) return done(err);
+            assert.equal(coll2.length, 0);
+            done();
+          }));
+        }));
       }));
     });
   });
