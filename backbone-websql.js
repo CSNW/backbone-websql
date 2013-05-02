@@ -1,5 +1,9 @@
 var WebSQLStore =// Support backward compatibility.
 (function( window, Backbone, undefined ) {
+	if (!Backbone)
+		Backbone = require('backbone');
+	var _ = window._ || require('underscore');
+
 // ====== [UTILS] ======
 //function for generating "random" id of objects in DB
 function S4() {
@@ -43,7 +47,7 @@ var WebSQLStore = function (db, tableName, columns, initSuccessCallback, initErr
 		if(initSuccessCallback) initSuccessCallback();
 	};
 	var error = function (tx,error) {
-		window.console.error("Error while create table",error);
+		console.error("Error while create table",error);
 		if (initErrorCallback) initErrorCallback();
 	};
 	//db.transaction (function(tx) {
@@ -51,7 +55,9 @@ var WebSQLStore = function (db, tableName, columns, initSuccessCallback, initErr
 	//});
 	var colDefns = ["`id` unique", "`value`"];
 	colDefns = colDefns.concat(this.columns.map(createColDefn));
-	this._executeSql("CREATE TABLE IF NOT EXISTS `" + tableName + "` (" + colDefns.join(", ") + ");",null,success, error, {});
+	var sql = "CREATE TABLE IF NOT EXISTS `" + tableName + "` (" + colDefns.join(", ") + ");";
+	console.log(sql);
+	this._executeSql(sql,null,success, error, {});
 };
 WebSQLStore.debug = false;
 WebSQLStore.insertOrReplace = false;
@@ -161,9 +167,25 @@ _.extend(WebSQLStore.prototype,{
 			options.transaction.executeSql(SQL, params, success, error);
 		}
 		else {
-			this.db.transaction(function(tx) {
-				tx.executeSql(SQL, params, success, error);
-			});
+			if (this.db.transaction) {
+				// browser WebSQL API
+				this.db.transaction(function(tx) {
+					tx.executeSql(SQL, params, success, error);
+				});
+			}
+			else {
+				// node sqlite3 API
+				this.db.all(SQL, params || [], function(err, results) {
+					if (err) {
+						error(null, err);
+					}
+					else {
+						results.rowsAffected = results.changes;
+						results.rows = results;
+						success(null, results);
+					}
+				});
+			}
 		}
 	}
 });
@@ -185,7 +207,9 @@ Backbone.sync = function (method, model, options) {
 			result = [];
 
 			for (i=0;i<len;i++) {
-				result.push(JSON.parse(res.rows.item(i).value));
+				var rows = res.rows;
+				var val = rows.item ? rows.item(i).value : rows[i];
+				result.push(JSON.parse(val));
 			}
 			if(isSingleResult && result.length!==0){
 				result = result[0];
@@ -195,9 +219,9 @@ Backbone.sync = function (method, model, options) {
 		options.success(result);
 	};
 	error = function (tx,error) {
-		window.console.error("sql error");
-		window.console.error(error);
-		window.console.error(tx);
+		console.error("sql error");
+		console.error(error);
+		console.error(tx);
 		options.error(error);
 	};
 	
@@ -246,5 +270,7 @@ function createColDefn(col) {
 }
 
 Backbone.WebSQLStore = WebSQLStore;
+if (typeof exports != undefined)
+  module.exports = WebSQLStore;
 return( WebSQLStore );// Support backward compatibility.
-})( window, Backbone );
+})( this, this.Backbone );
