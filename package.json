@@ -1,6 +1,7 @@
 {
   "name": "backbone-websql",
   "version": "0.1.1",
+  "main": "./backbone-websql.js",
   "dependencies": {
     "sqlite3": "2.1.x",
     "backbone": "1.0.x",
