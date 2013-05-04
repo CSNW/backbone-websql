@@ -1,17 +1,34 @@
-(function(Backbone, _) {
+(function(root) {
+
+var _ = root._ || require('underscore');
+var Backbone = root.Backbone || require('backbone');
+var WebSQLStore = Backbone.WebSQLStore || require('../backbone-websql.js')
+var async = root.async || require('async');
+var chai = root.chai || require('chai');
 var assert = chai.assert;
 
-var db = openDatabase('bb-websql-tests', '', 'Backbone Websql Tests', 1024*1024);
+var db;
+if (root.openDatabase) {
+  var db = openDatabase('bb-websql-tests', '', 'Backbone Websql Tests', 1024*1024);
+}
+else {
+  var sqlite3 = require('sqlite3').verbose();
+  var db = new sqlite3.Database(':memory:');
+}
 
-var ThingModel = Backbone.Model.extend({
-  'store': new WebSQLStore(db, 'things')
-});
-var ThingCollection = Backbone.Collection.extend({
-  'model': ThingModel,
-  'store': ThingModel.prototype.store
-});
+var ThingModel, ThingCollection;
 
 describe('Backbone.WebSQL', function() {
+
+  before(function(done) {
+    ThingModel = Backbone.Model.extend({
+      'store': new WebSQLStore(db, 'things', function() { done(); }, function(err) { done(err); })
+    });
+    ThingCollection = Backbone.Collection.extend({
+      'model': ThingModel,
+      'store': ThingModel.prototype.store
+    });
+  })
 
   afterEach(teardown);
 
@@ -137,4 +154,4 @@ function cb(options, callback) {
   return options;
 }
 
-})(Backbone, _);
+})(this);

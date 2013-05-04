@@ -56,7 +56,6 @@ var WebSQLStore = function (db, tableName, columns, initSuccessCallback, initErr
 	var colDefns = ["`id` unique", "`value`"];
 	colDefns = colDefns.concat(this.columns.map(createColDefn));
 	var sql = "CREATE TABLE IF NOT EXISTS `" + tableName + "` (" + colDefns.join(", ") + ");";
-	console.log(sql);
 	this._executeSql(sql,null,success, error, {});
 };
 WebSQLStore.debug = false;
@@ -180,9 +179,10 @@ _.extend(WebSQLStore.prototype,{
 						error(null, err);
 					}
 					else {
-						results.rowsAffected = results.changes;
-						results.rows = results;
-						success(null, results);
+						success(null, {
+							'rowsAffected': results.changes,
+							'rows': results
+						});
 					}
 				});
 			}
@@ -208,7 +208,7 @@ Backbone.sync = function (method, model, options) {
 
 			for (i=0;i<len;i++) {
 				var rows = res.rows;
-				var val = rows.item ? rows.item(i).value : rows[i];
+				var val = rows.item ? rows.item(i).value : rows[i].value;
 				result.push(JSON.parse(val));
 			}
 			if(isSingleResult && result.length!==0){

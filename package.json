@@ -4,7 +4,9 @@
   "dependencies": {
     "sqlite3": "2.1.x",
     "backbone": "1.0.x",
+    "mocha": "1.9.x",
     "chai": "1.6.x",
-    "underscore": "1.4.x"
+    "underscore": "1.4.x",
+    "async": "~0.2.8"
   }
 }
